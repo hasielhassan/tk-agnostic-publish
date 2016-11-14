@@ -2,8 +2,7 @@
 
 # Form implementation generated from reading ui file 'publish_details_form.ui'
 #
-# Created: Fri Oct 07 00:37:31 2016
-#      by: pyside-uic 0.2.15 running on PySide 1.2.4
+#      by: pyside-uic 0.2.15 running on PySide 1.2.2
 #
 # WARNING! All changes made in this file will be lost!
 
@@ -47,7 +46,7 @@ class Ui_PublishDetailsForm(object):
         self.task_scroll.setWidgetResizable(True)
         self.task_scroll.setObjectName("task_scroll")
         self.contents = QtGui.QWidget()
-        self.contents.setGeometry(QtCore.QRect(0, 0, 437, 534))
+        self.contents.setGeometry(QtCore.QRect(0, 0, 98, 28))
         self.contents.setObjectName("contents")
         self.task_scroll.setWidget(self.contents)
         self.horizontalLayout_7.addWidget(self.task_scroll)
@@ -220,8 +219,8 @@ class Ui_PublishDetailsForm(object):
 
     def retranslateUi(self, PublishDetailsForm):
         PublishDetailsForm.setWindowTitle(QtGui.QApplication.translate("PublishDetailsForm", "Form", None, QtGui.QApplication.UnicodeUTF8))
-        self.items_title_label.setText(QtGui.QApplication.translate("PublishDetailsForm", "Add Additional Items to Publish:", None, QtGui.QApplication.UnicodeUTF8))
-        self.label_3.setText(QtGui.QApplication.translate("PublishDetailsForm", "<html><head/><body><p><span style=\" font-style:italic;\">Drag and Drop the secondary files you want to publish along with your primary file.<br/><br/>Otherwise, only your current work file will be published.</span></p></body></html>", None, QtGui.QApplication.UnicodeUTF8))
+        self.items_title_label.setText(QtGui.QApplication.translate("PublishDetailsForm", "Choose Additional Items to Publish:", None, QtGui.QApplication.UnicodeUTF8))
+        self.label_3.setText(QtGui.QApplication.translate("PublishDetailsForm", "<i>This publisher does not have any optional items to choose from.<br><br>Only your current work file will be published.</i>", None, QtGui.QApplication.UnicodeUTF8))
         self.info_title_label.setText(QtGui.QApplication.translate("PublishDetailsForm", "Add Information about your Publish:", None, QtGui.QApplication.UnicodeUTF8))
         self.task_header_label.setText(QtGui.QApplication.translate("PublishDetailsForm", "What Shotgun Task are you working on?", None, QtGui.QApplication.UnicodeUTF8))
         self.sg_task_label.setText(QtGui.QApplication.translate("PublishDetailsForm", "Anm, Animation", None, QtGui.QApplication.UnicodeUTF8))

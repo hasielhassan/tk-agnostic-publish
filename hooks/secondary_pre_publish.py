@@ -8,14 +8,13 @@
 # agreement to the Shotgun Pipeline Toolkit Source Code License. All rights 
 # not expressly granted therein are reserved by Shotgun Software Inc.
 
-import tank
-from tank import Hook
-from tank import TankError
+import os
+import pyseq
 
-import win32com
-from win32com.client import Dispatch, constants
-from pywintypes import com_error
-Application = Dispatch("XSI.Application").Application
+import sgtk
+from sgtk import Hook
+from sgtk import TankError
+from tank.platform.qt import QtCore, QtGui
 
 class PrePublishHook(Hook):
     """
@@ -76,33 +75,112 @@ class PrePublishHook(Hook):
                                     errors: List
                                             A list of error messages (strings) to report    
                                 }
-        """       
-        results = []
-        
-        # validate tasks:
-        for task in tasks:
-            item = task["item"]
-            output = task["output"]
-            errors = []
-        
-            # report progress:
-            progress_cb(0, "Validating", task)
-        
-            # pre-publish item here, e.g.
-            #if output["name"] == "foo":
-            #    ...
-            #else:
-            # don't know how to publish this output types!
-            errors.append("Don't know how to publish this item!")        
+        """
 
-            # if there is anything to report then add to result
-            if len(errors) > 0:
-                # add result:
-                results.append({"task":task, "errors":errors})
-                
-            progress_cb(100)
-            
+        results = []
+
+        try:  
+
+            self.parent.log_debug("Starting Secondary Pre Publish")
+
+            # validate tasks:
+            for task in tasks:
+                item = task["item"]
+                output = task["output"]
+                errors = []
+                app = self.parent
+
+                # report progress:
+                progress_cb(0, "Validating", task)
+
+                if output["name"] == "alembic_cache":
+                    pass
+                elif output["name"] in ['cinema_render_sequences',
+                                        'cinema_render_preview_video',
+                                        'after_render_sequences',
+                                        'after_render_preview_video']:
+                                        
+                    errors.extend(self.validate_render_sequences(
+                        item,
+                        output,
+                        work_template,
+                        user_data,
+                        progress_cb))
+
+                elif output['name'] in ['aftereffects_xmlproject']:
+
+                    errors.extend(self.validate_after_xml_project(
+                        item,
+                        output,
+                        work_template,
+                        user_data,
+                        progress_cb))
+
+                elif output['name'] in ['aftereffects_element']:
+
+                    errors.extend(self.validate_existence_of_file(item['other_params']['item_dict']['path']))
+
+                else:
+                    errors.append("Don't know how to publish this item!")
+
+                # if there is anything to report then add to result
+                if len(errors) > 0:
+                    # add result:
+                    results.append({"task": task, "errors": errors})
+
+                progress_cb(100)
+
+            self.parent.log_debug("Returning Secondary Pre Publish: %s" % results)
+        except:
+            import traceback
+            QtGui.QMessageBox.warning(None, "Runtime Error!", traceback.format_exc())
+
+
         return results
 
-    
-    
+    def validate_after_xml_project(self, item, output, work_template, user_data, progress_cb):
+
+        """
+        """
+
+        errors = []
+
+        schema = '<AfterEffectsProject xmlns="http://www.adobe.com/products/aftereffects" majorVersion="1" minorVersion="0">'
+        if 'http://www.adobe.com/products/aftereffects' not in str(item['other_params']['xml_tree'].getroot()):
+
+            errors.append("The header of the project file dont match the Adobe schema (%s)" % schema)
+
+
+        return errors
+
+    def validate_existence_of_file(self, path):
+
+        """
+        """
+        errors = []
+
+        if not os.path.exists(path):
+
+            errors.append("The file %s has no longer exists on disk" % schema)
+
+
+        return errors
+
+
+    def validate_render_sequences(self, item, output, work_template, user_data, progress_cb):
+
+        """
+        """
+
+        errors = []
+
+        sequence_files = self.parent.detect_image_sequence(item['other_params']['item_dict']['path'] % 1)
+        sequences = pyseq.get_sequences(sequence_files)
+
+        for seq in sequences:
+
+            if len(seq.missing()) != 0:
+                errors.append("Your sequence has %s missing frames, it could not be published. (%s)" % (str(len(seq.missing())), seq.missing()))
+
+
+        return errors

@@ -31,6 +31,9 @@ class PublishOutput(object):
         self._name = (fields.get("name", "") if name == None else name)
         self._required = (fields.get("required", False) if required == None else required)
         self._selected = self._required or (fields.get("selected", True) if selected == None else selected)
+
+        #especial case for primary outputs
+        self.extension = fields.get("extension", None)
         
     @property
     def name(self):
@@ -75,5 +78,26 @@ class PublishOutput(object):
     @property
     def is_primary(self):
         return self.name == PublishOutput.PRIMARY_NAME
-    
-    
+
+    def _serialize(self):
+
+        dictionary = {}
+
+        dictionary["_app"] = self._app
+        dictionary["_name"] = self._name
+        dictionary["_required"] = self._required
+        dictionary["_selected"] = self._selected
+        dictionary["extension"] = self.extension
+        dictionary["scene_item_type"] = self.scene_item_type
+        dictionary["display_name"] = self.display_name
+        dictionary["display_group"] =  self.display_group
+        dictionary["description"] =  self.description
+        dictionary["icon_path"] =  self.icon_path
+        dictionary["tank_type"] =  self.tank_type
+        dictionary["publish_template"] =  self.publish_template
+        dictionary["name"] =  self.name
+        dictionary["selected"] =  self.selected
+        dictionary["required"] =  self.required
+        dictionary["is_primary"] =  self.is_primary
+
+        return dictionary

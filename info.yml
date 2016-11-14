@@ -46,7 +46,7 @@ configuration:
     hook_scan_scene: 
         type: hook
         parameters: []
-        default_value: "scan_scene_{engine_name}"
+        default_value: "scan_scene"
         description: Specify a hook to scan for items to publish.  
                      The hook should return a list dictionaries that represent the items
                      to be published.
@@ -71,7 +71,7 @@ configuration:
     hook_secondary_pre_publish:
         type: hook
         parameters: [tasks, progress_cb]
-        default_value: "secondary_pre_publish_{engine_name}"
+        default_value: "secondary_pre_publish"
         description: Specify the hook that will run before the publish.  This hook can be
                      used to perform any validaiton on the secondary tasks that are passed 
                      in to ensure that they are ready to be published.
@@ -79,7 +79,7 @@ configuration:
     hook_secondary_publish:
         type: hook
         parameters: [tasks, work_template, comment, thumbnail_path, sg_task, primary_task, primary_publish_path, progress_cb]
-        default_value: "secondary_publish_{engine_name}"
+        default_value: "secondary_publish"
         description: Specify the hook that will be used to do the publish.  This hook is 
                      passed a list of secondary tasks that are to be published.
                      The hook is responsible for the entire publish process and should
@@ -93,40 +93,39 @@ configuration:
                      this hook will be responsible for versioning up the scene to the latest 
                      version.
 
-    primary_scene_item_type:
-        type: str
-        description: This is the type used to match up items returned from the scan 
-                     scene hook with with the primary output
-        default_value: work_file
-        
-    primary_display_name:
-        type: str
-        description: This is the name the primary output will be given in the UI
-        default_value: "Current Work File"
-        
-    primary_description:
-        type: str
-        description: This is the description of the primary output used in the UI
-        default_value: "Publish and version up the current work file"
-        
-    primary_icon:
-        type: config_path
-        description: This is the icon used for the primary output in the UI
-        default_value: ""
-        
-    primary_tank_type:
-        type: tank_type
-        description: This is the type that will be used when registering the primary
-                     published file with Shotgun. 
-                     If not set then this must be determined within the publish hook.
-        default_value: ""
-        
-    primary_publish_template:
-        type: template
-        fields: context, *
-        description: Template used to locate the primary published file within the file 
-                     system.  If None then this must be determined within the publish hook.
-        allows_empty: True
+    primary_outputs:
+        type: list
+        values:
+            type: dict
+            items:
+                name:
+                    type: str
+                    description: I
+                extension:
+                    type: str
+                    description: I
+                icon:
+                    type: config_path
+                    description: Icon used for this output in the UI
+                scene_item_type:
+                    type: str
+                    description: Type used to match up items returned from the scan scene
+                                 hook with specific outputs
+                display_name:
+                    type: str
+                    description: The name this output will be given in the UI
+                tank_type:
+                    type: tank_type
+                    description: The type that will be used when registering any published
+                                 files for this output with Shotgun.  
+                                 If set to '' then this must be determined within the publish hook.
+                    allows_empty: True
+                publish_template:
+                    type: template
+                    fields: context, * 
+                    allows_empty: True
+                    description: Template used to locate published files within the file system.
+                                 If null then this must be determined within the publish hook.
 
     secondary_outputs:
         type: list

@@ -10,6 +10,10 @@
 
 import tank
 from tank.platform.qt import QtCore, QtGui
+import traceback
+import pyseq
+import os
+from string import digits
 
 from group_header import GroupHeader
 from output_item import OutputItem
@@ -50,6 +54,8 @@ class PublishDetailsForm(QtGui.QWidget):
         
         self.expand_single_items = False
         self.allow_no_task = False
+
+        self._app = tank.platform.current_bundle()
         
         self._group_widget_info = {}
         self._tasks = []
@@ -58,6 +64,11 @@ class PublishDetailsForm(QtGui.QWidget):
         from .ui.publish_details_form import Ui_PublishDetailsForm
         self._ui = Ui_PublishDetailsForm() 
         self._ui.setupUi(self)
+
+        #config for dragable secondary outputs
+        self._ui.publishes_stacked_widget.setAcceptDrops(True)
+        self._ui.publishes_stacked_widget.dragEnterEvent = self.dragEnterEvent
+        self._ui.publishes_stacked_widget.dropEvent = self.dropEvent
         
         # create vbox layout for scroll widget:
         layout = QtGui.QVBoxLayout()
@@ -70,6 +81,96 @@ class PublishDetailsForm(QtGui.QWidget):
         self._ui.cancel_btn.clicked.connect(self._on_cancel)
         
         self.can_change_shotgun_task = True
+
+    def dragEnterEvent(self, event):
+        """
+        """
+        if event.mimeData().hasUrls:
+            event.setDropAction(QtCore.Qt.CopyAction)
+            event.accept()
+        else:
+            event.ignore()
+
+    def dropEvent(self, event):
+        """
+        """
+        try:
+            if event.mimeData().hasUrls:
+                event.setDropAction(QtCore.Qt.CopyAction)
+                event.accept()
+                urls = event.mimeData().urls()
+                paths = [os.path.abspath(url.toLocalFile()) for url in urls]
+
+                if self._app.agnostic_scene_contents['primary'] != None:
+
+                    self.process_items_from_paths(paths)
+
+                else:
+                    QtGui.QMessageBox.warning(None,
+                                              "File Warning!",
+                                              "You need to load a primary item first!")
+
+
+            else:
+                event.ignore()
+        except:
+            QtGui.QMessageBox.warning(None, "Runtime Error!", traceback.format_exc())
+
+
+    def process_items_from_paths(self, paths):
+
+        """
+        """
+
+        if len(paths) == 1:
+
+            file_name = paths[0]
+            file_folder = os.path.dirname(file_name)
+
+            plausible_sequence = self._app.detect_image_sequence(file_name)
+            if len(plausible_sequence) != 0:
+                message = 'We detect a Sequence for the files you drop, '
+                message += 'do you whant to consider the entire sequencce?\n'
+                message += 'Else, only the specific droped files will be used.'
+                buttons = QtGui.QMessageBox.Yes | QtGui.QMessageBox.No
+                answare = QtGui.QMessageBox.warning(None, 'Detected Sequence', message, buttons)
+
+                if answare == QtGui.QMessageBox.Yes:
+                    sequences = pyseq.get_sequences(plausible_sequence)
+                    for seq in sequences:
+                        file_name = os.path.join(file_folder, seq.format("%h%p%t"))
+                        self.store_item(file_name, 'sequence')
+                else:
+                    self.store_item(file_name, 'single')
+            else:
+                self.store_item(file_name, 'single')
+
+        elif len(paths) > 1:
+
+            #try to identify sequences
+            sequences = pyseq.get_sequences(paths)
+            for seq in sequences:
+                file_name = os.path.join(os.path.dirname(seq.path()), seq.format("%h%p%t"))
+
+                if '%' in file_name:
+                    self.store_item(file_name, 'sequence')
+                else:
+                    self.store_item(file_name, 'single')
+
+        else:
+            QtGui.QMessageBox.warning(None, "File Warning!", "Not working for now!")
+
+        self._app.initialized_from = "secondary"
+        self._app._initialize()
+
+    def store_item(self, filepath, class_type):
+
+        """
+        Method to encapsulate the creation of the dictionary item to be procesed later by the scan scene hook
+        """
+        item = {'type': 'secondary', 'path': filepath, 'class': class_type}
+        if item not in self._app.agnostic_scene_contents['secondary']:
+            self._app.agnostic_scene_contents['secondary'].append(item)
 
     @property
     def selected_tasks(self):
@@ -156,6 +257,7 @@ class PublishDetailsForm(QtGui.QWidget):
         Populate the shotgun task combo box with the provided
         list of shotgun tasks
         """
+        
         current_task = self._get_sg_task_combo_task(self._ui.sg_task_combo.currentIndex())
         self._ui.sg_task_combo.clear()
         
@@ -244,6 +346,13 @@ class PublishDetailsForm(QtGui.QWidget):
         
         # add widgets to scroll area:
         layout = task_scroll_widget.layout()
+
+        #clean all the widgets in layout
+        for i in reversed(range(layout.count())): 
+            widget = layout.takeAt(i).widget()
+            if widget:
+                widget.deleteLater()
+
         for group in group_order:
             
             widget_info = {}

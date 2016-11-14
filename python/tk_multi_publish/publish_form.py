@@ -9,8 +9,9 @@
 # not expressly granted therein are reserved by Shotgun Software Inc.
 
 import os
-
+import traceback
 from tank.platform.qt import QtCore, QtGui
+from .task import Task
 
 class PublishForm(QtGui.QWidget):
     """
@@ -24,8 +25,12 @@ class PublishForm(QtGui.QWidget):
         """
         Construction
         """
+
         QtGui.QWidget.__init__(self, parent)
+
         self._app = app
+
+        self._app._initialize = self._initialize
         
         # TODO: shouldn't need the handler
         self._handler = handler
@@ -49,12 +54,59 @@ class PublishForm(QtGui.QWidget):
         self._ui.publish_details.allow_no_task = allow_taskless_publishes
         
         self._ui.primary_error_label.setVisible(False)
+
+        #config for dragable workfile
+        self._ui.work_drag_area.setAcceptDrops(True)
+        self._ui.work_drag_area.dragEnterEvent = self.dragEnterEvent
+        self._ui.work_drag_area.dropEvent = self.dropEvent
         
         # always start with the details page:
         self.show_publish_details()
         
         # initialize:
         self._initialize()
+
+    def dragEnterEvent(self, event):
+        """
+        """
+        if event.mimeData().hasUrls:
+            event.setDropAction(QtCore.Qt.CopyAction)
+            event.accept()
+        else:
+            event.ignore()
+
+    def dropEvent(self, event):
+        """
+        """
+        try:
+            if event.mimeData().hasUrls:
+                event.setDropAction(QtCore.Qt.CopyAction)
+                event.accept()
+                urls = event.mimeData().urls()
+                if len(urls) == 1:
+
+                    file_name = os.path.abspath(urls[0].toLocalFile())
+                    droped_file_extension = os.path.splitext(file_name)[1][1:]
+
+                    for output in self._handler._primary_outputs:
+                        if output.extension == droped_file_extension:
+                            self._handler._primary_output = output
+                            self._app.agnostic_scene_contents['primary'] = {'type': 'primary', 'path': file_name, 'output': output}
+
+                    if not self._app.agnostic_scene_contents['primary']:
+                        QtGui.QMessageBox.warning(None, "File Warning!", "The file format (extension) you droped, don't match with any of the available ones declared on your environment!")
+
+                    self._app.initialized_from = "primary"
+                    self._initialize()
+                    #self.update_workfile_details(file_name)
+
+                else:
+                    QtGui.QMessageBox.warning(None, "File Warning!", "You drop more that one file, try again!")
+            else:
+                event.ignore()
+        except:
+            QtGui.QMessageBox.warning(None, "Runtime Error!", traceback.format_exc())
+
         
     @property
     def selected_tasks(self):
@@ -127,7 +179,8 @@ class PublishForm(QtGui.QWidget):
                 secondary_tasks.append(task)
                 
         # initialize primary task UI:
-        self._set_primary_task(primary_task)
+        if primary_task:
+            self._set_primary_task(primary_task)
 
         # initialize publish details form:
         self._ui.publish_details.initialize(secondary_tasks, sg_tasks)
@@ -138,6 +191,7 @@ class PublishForm(QtGui.QWidget):
         self._ui.publish_details.shotgun_task = sg_task
         if sg_task:
             self._ui.publish_details.can_change_shotgun_task = False
+
          
     def _get_selected_tasks(self):
         """

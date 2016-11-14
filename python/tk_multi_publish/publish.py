@@ -11,6 +11,7 @@
 import os
 import pprint
 import tempfile
+import traceback
 
 import tank
 from tank import TankError
@@ -35,16 +36,15 @@ class PublishHandler(object):
         self._app = app
 
         # load outputs from configuration:
-        primary_output_dict = {}
-        primary_output_dict["scene_item_type"] = self._app.get_setting("primary_scene_item_type")
-        primary_output_dict["display_name"] = self._app.get_setting("primary_display_name")
-        primary_output_dict["description"] = self._app.get_setting("primary_description")
-        primary_output_dict["icon"] = self._app.get_setting("primary_icon")
-        primary_output_dict["tank_type"] = self._app.get_setting("primary_tank_type")
-        primary_output_dict["publish_template"] = self._app.get_setting("primary_publish_template")
-        self._primary_output = PublishOutput(self._app, primary_output_dict, name=PublishOutput.PRIMARY_NAME, selected=True, required=True)
-        
+        self._primary_output = None
+        self._primary_outputs = [PublishOutput(self._app, primary_output, name=primary_output['name'], selected=True, required=True) for primary_output in self._app.get_setting("primary_outputs")]
+        self._primary_item_types = [p.scene_item_type for p in self._primary_outputs]
+
         self._secondary_outputs = [PublishOutput(self._app, output) for output in self._app.get_setting("secondary_outputs")]
+
+        self._app.agnostic_scene_contents = {'primary': None, 'secondary': []}
+        self._app.initialized_from = None
+        self._app.context_fields = {}
         
         # validate the secondary outputs:
         unique_names = []
@@ -62,9 +62,9 @@ class PublishHandler(object):
             # item type (the interface doesn't allow it!)
             # TODO: This may be a redundant requirement but need to confirm
             # before removing
-            if output.scene_item_type == self._primary_output.scene_item_type:
+            if output.scene_item_type in self._primary_item_types:
                 raise TankError("Secondary output is defined with the same scene_item_type (%s) as the primary output - this is not allowed"
-                                % self._primary_output.scene_item_type)
+                                % self._primary_item_types)
 
     @property
     def work_template(self):
@@ -72,27 +72,6 @@ class PublishHandler(object):
         The current work file template as sourced from the parent app.
         """
         return self._app.get_template("template_work")
-
-    def rebuild_primary_output(self):
-        """
-        Rebuilds the primary output object based on the parent app's current settings.
-        """
-        # load outputs from configuration:
-        primary_output_dict = {}
-        primary_output_dict["scene_item_type"] = self._app.get_setting("primary_scene_item_type")
-        primary_output_dict["display_name"] = self._app.get_setting("primary_display_name")
-        primary_output_dict["description"] = self._app.get_setting("primary_description")
-        primary_output_dict["icon"] = self._app.get_setting("primary_icon")
-        primary_output_dict["tank_type"] = self._app.get_setting("primary_tank_type")
-        primary_output_dict["publish_template"] = self._app.get_setting("primary_publish_template")
-
-        self._primary_output = PublishOutput(
-            self._app,
-            primary_output_dict,
-            name=PublishOutput.PRIMARY_NAME,
-            selected=True,
-            required=True,
-        )
         
     def show_publish_dlg(self):
         """
@@ -239,7 +218,7 @@ class PublishHandler(object):
             # the publish process is complete we'll make sure our window is
             # still on top.
             publish_form.window().raise_()
-        
+
         # check that we can continue:
         num_errors = 0
         for task in selected_tasks:
@@ -256,7 +235,7 @@ class PublishHandler(object):
                                              QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
             if res == QtGui.QMessageBox.Yes:
                 return
-                
+
         # show publish progress:
         publish_form.show_publish_progress("Publishing")
         progress.reset()
@@ -367,7 +346,7 @@ class PublishHandler(object):
         # First, validate that all items specify a known scene item type.  Any
         # that don't are skipped and won't be published by the app.
         valid_items = []
-        output_scene_item_types = set([output.scene_item_type for output in all_outputs])
+        output_scene_item_types = set([output.scene_item_type if output else None for output in all_outputs])
         for item in items:
             if item.scene_item_type in output_scene_item_types:
                 valid_items.append(item)
@@ -396,7 +375,11 @@ class PublishHandler(object):
     
         # validate that only one matches the primary type
         # and that all items are valid:
-        primary_type = self._primary_output.scene_item_type
+        if self._primary_output:
+            primary_type = self._primary_output.scene_item_type
+        else:
+            primary_type = None
+
         primary_item = None
         for item in items:
 
@@ -410,8 +393,8 @@ class PublishHandler(object):
                 else:
                     primary_item = item
                 
-        if not primary_item:
-            raise TankError("Scan scene didn't return a primary item to publish!")
+        #if not primary_item:
+        #    raise TankError("Scan scene didn't return a primary item to publish!")
                 
         return items
         
@@ -425,11 +408,11 @@ class PublishHandler(object):
             task=primary_task.as_dictionary(), 
             work_template=self.work_template,
             progress_cb=progress_cb,
-            user_data=user_data,
-        )
+            user_data=user_data)
 
         # do pre-publish of secondary tasks:
         hook_tasks = [task.as_dictionary() for task in secondary_tasks]
+
         pp_results = self._app.execute_hook(
             "hook_secondary_pre_publish",  
             tasks=hook_tasks, 
