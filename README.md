@@ -117,9 +117,8 @@ after_shot_render_pub_preview
 realflow_shot_publish
   definition: '@publish_shot_root/scn{shot_scene_name}/sht{Shot}/Editables/scn{shot_scene_name}_sht{Shot}_{step_code}_{name}_v{version}.flw'
 ```
-
 It also require the followin dependencies:
 
-pyseq - For file sequence detection
-ffmpeg - For transcoding
-imagemgick - To deal with linear vs sRGB images
+ - pyseq - For file sequence detection 
+ - ffmpeg - For transcoding
+ - imagemgick - To deal with linear vs sRGB images
