@@ -1,0 +1,10 @@
+<RCC>
+  <qresource prefix="res">
+    <file>failure.png</file>
+    <file>success.png</file>
+    <file>group_collapse.png</file>
+    <file>group_expand.png</file>
+    <file>default_header.png</file>
+    <file>default_output.png</file>
+  </qresource>
+</RCC>

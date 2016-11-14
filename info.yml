@@ -1,0 +1,217 @@
+# Copyright (c) 2013 Shotgun Software Inc.
+# 
+# CONFIDENTIAL AND PROPRIETARY
+# 
+# This work is provided "AS IS" and subject to the Shotgun Pipeline Toolkit 
+# Source Code License included in this distribution package. See LICENSE.
+# By accessing, using, copying or modifying this work you indicate your 
+# agreement to the Shotgun Pipeline Toolkit Source Code License. All rights 
+# not expressly granted therein are reserved by Shotgun Software Inc.
+
+# Metadata defining the behaviour and requirements for this app
+
+# expected fields in the configuration file for this app
+configuration:
+    
+    display_name:
+        type: str
+        default_value: Publish
+        description: Specify the name that should be used in menus and the main
+                     publish dialog
+    
+    template_work:
+        type: template
+        description: A reference to a template which locates a work file on disk.
+        fields: context, *
+        allows_empty: True
+
+    hook_thumbnail:
+        type: hook
+        parameters: []
+        default_value: thumbnail
+        description: Specify a hook to pre-generate a thumbnail for the publish.
+
+    hook_copy_file:
+        type: hook
+        parameters: [source_path, target_path, task]
+        default_value: copy_file
+        description: Specify a hook to copy the file 'source_path' to 'target_path'.
+                     This hook is used in the 'copy_file' utility function and can
+                     be accessed from other hooks by calling
+                     
+                        self.parent.copy_file(source_path, target_path, task)
+                     
+                     from within the hook.
+
+    hook_scan_scene: 
+        type: hook
+        parameters: []
+        default_value: "scan_scene_{engine_name}"
+        description: Specify a hook to scan for items to publish.  
+                     The hook should return a list dictionaries that represent the items
+                     to be published.
+
+    hook_primary_pre_publish:
+        type: hook
+        parameters: [task, work_template, progress_cb]
+        default_value: primary_pre_publish
+        description: Specify the hook that will run before the primary publish.  This hook 
+                     can be used to perform any validaiton on the primary task that is 
+                     passed in to ensure that it is ready to be published.
+        
+    hook_primary_publish:
+        type: hook
+        parameters: [task, work_template, comment, thumbnail_path, sg_task, progress_cb]
+        default_value: primary_publish
+        description: Specify the hook that will actually do the publish of the primary
+                     task.  This hook is passed the primary task that should be published.
+                     The hook is responsible for the entire publish process and should
+                     ensure to register the publish with Shotgun.
+
+    hook_secondary_pre_publish:
+        type: hook
+        parameters: [tasks, progress_cb]
+        default_value: "secondary_pre_publish_{engine_name}"
+        description: Specify the hook that will run before the publish.  This hook can be
+                     used to perform any validaiton on the secondary tasks that are passed 
+                     in to ensure that they are ready to be published.
+        
+    hook_secondary_publish:
+        type: hook
+        parameters: [tasks, work_template, comment, thumbnail_path, sg_task, primary_task, primary_publish_path, progress_cb]
+        default_value: "secondary_publish_{engine_name}"
+        description: Specify the hook that will be used to do the publish.  This hook is 
+                     passed a list of secondary tasks that are to be published.
+                     The hook is responsible for the entire publish process and should
+                     ensure it registers the published files with Shotgun
+
+    hook_post_publish:
+        type: hook
+        parameters: [work_template, primary_task, secondary_tasks, progress_cb]
+        default_value: post_publish
+        description: Specify the hook that will be used to do any post-publish work.  Typically, 
+                     this hook will be responsible for versioning up the scene to the latest 
+                     version.
+
+    primary_scene_item_type:
+        type: str
+        description: This is the type used to match up items returned from the scan 
+                     scene hook with with the primary output
+        default_value: work_file
+        
+    primary_display_name:
+        type: str
+        description: This is the name the primary output will be given in the UI
+        default_value: "Current Work File"
+        
+    primary_description:
+        type: str
+        description: This is the description of the primary output used in the UI
+        default_value: "Publish and version up the current work file"
+        
+    primary_icon:
+        type: config_path
+        description: This is the icon used for the primary output in the UI
+        default_value: ""
+        
+    primary_tank_type:
+        type: tank_type
+        description: This is the type that will be used when registering the primary
+                     published file with Shotgun. 
+                     If not set then this must be determined within the publish hook.
+        default_value: ""
+        
+    primary_publish_template:
+        type: template
+        fields: context, *
+        description: Template used to locate the primary published file within the file 
+                     system.  If None then this must be determined within the publish hook.
+        allows_empty: True
+
+    secondary_outputs:
+        type: list
+        values:
+            type: dict
+            items:
+                name:
+                    type: str
+                    description: Identifying name of this output.  This is provided to the
+                                 pre-publish and publish hooks to allow them to determine
+                                 what they should publish for task.
+                scene_item_type:
+                    type: str
+                    description: Type used to match up items returned from the scan scene
+                                 hook with specific outputs
+                display_name:
+                    type: str
+                    description: The name this output will be given in the UI
+                display_group:
+                    type: str
+                    description: The group that this output should appear in within the UI
+                description:
+                    type: str
+                    description: Description of this output used in the UI
+                icon:
+                    type: config_path
+                    description: Icon used for this output in the UI
+                selected:
+                    type: bool
+                    description: Initial state for outputs of this type in the UI
+                required:
+                    type: bool
+                    description: Specify if this output is required for the publish or not.
+                                 If an output is required then it will not be deselectable in
+                                 the UI.
+                tank_type:
+                    type: tank_type
+                    description: The type that will be used when registering any published
+                                 files for this output with Shotgun.  
+                                 If set to '' then this must be determined within the publish hook.
+                    allows_empty: True
+                publish_template:
+                    type: template
+                    fields: context, * 
+                    allows_empty: True
+                    description: Template used to locate published files within the file system.
+                                 If null then this must be determined within the publish hook.
+
+        decription: Specify all other outputs that are supported.
+                    All non-primary items returned from the scan scene hook must match
+                    up with one of these secondary types
+                    
+        allows_empty: True
+        default_value: []
+        
+    expand_single_items:
+        type: bool
+        description: Define if an output should be expanable to show the items it contains when 
+                     there is only a single item.
+        default_value: False
+        
+    allow_taskless_publishes:
+        type: bool
+        description:    Allow publishing when no Task is specified.  The publish will just be linked
+                        to the entity from the current work area
+        default_value:  True
+            
+            
+# the Shotgun fields that this app needs in order to operate correctly
+requires_shotgun_fields:
+
+# More verbose description of this item 
+display_name: "Publish"
+description: "Provides UI and functionality to publish files to Shotgun."
+
+# Required minimum versions for this item to run
+requires_shotgun_version:
+requires_core_version: "v0.14.58"
+requires_engine_version: 
+
+# this app works in all engines - it does not contain 
+# any host application specific commands
+supported_engines: 
+
+# the frameworks required to run this app
+frameworks:
+    - {"name": "tk-framework-widget", "version": "v0.2.x"}    
+    
