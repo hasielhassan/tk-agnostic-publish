@@ -55,12 +55,12 @@ tk-agnostic-publish:
     display_name: After XML Project, icon: icons/aftereffects_xmlproject.png,
     name: aftereffects_xmlproject, publish_template: after_shot_xml_project_pub,
     required: false, scene_item_type: aftereffects_xmlproject,
-    selected: true, tank_type: AfterEffects Project Element}
+    selected: true, tank_type: AfterEffects XML Project}
   - {description: After Effects Project Elements, display_group: Project Elements,
     display_name: After Elements, icon: icons/assets_group_icon.png,
     name: aftereffects_element, publish_template: after_project_element_pub,
     required: false, scene_item_type: aftereffects_element,
-    selected: true, tank_type: AfterEffects XML Project}
+    selected: true, tank_type: AfterEffects Project Element}
   - {description: Rendered Sequences, display_group: Renders,
     display_name: Rendered Sequences, icon: icons/publish_nuke_writenode.png,
     name: cinema_render_sequences, publish_template: max_shot_render_publish_exr,
